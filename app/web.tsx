@@ -1,22 +1,21 @@
 import React, { useRef, useState } from "react";
 import { View, Text, useColorScheme, TouchableOpacity, TextInput, StyleSheet, SafeAreaView, Platform, StatusBar } from "react-native";
-import { Link, useRouter } from "expo-router";
 import { WebView } from 'react-native-webview';
 // Importa los iconos de Expo  
 import { MaterialIcons, AntDesign, SimpleLineIcons } from "@/src/icons/icons";
 // importa estilos para modo Default y Dark de React
 import { DarkTheme, DefaultTheme } from "@react-navigation/native";
-
 // obtener el parámetro url
 import { useGlobalSearchParams } from 'expo-router';
+// navegacion con expo-router
+import { useRouter } from 'expo-router';
 
 export default function WebScreen() {
   const colorScheme = useColorScheme();
   const themeStyles = colorScheme === 'dark' ? DarkTheme : DefaultTheme
   const params = useGlobalSearchParams(); // Devuelve un objeto con los parámetros
   const { url } = params; // Accede al valor de 'url' del objeto
-  const urla = url.toString();
-  const [currentUrl, setCurrentUrl] = useState(urla || ""); // Usa el parámetro 'url' o un valor por defecto
+  const [currentUrl, setCurrentUrl] = useState(url ? url.toString() : "");
   const webViewRef = useRef<WebView>(null);// Crea una referencia al WebView
   const router = useRouter(); // navegacion con expo-router
 
@@ -30,7 +29,7 @@ export default function WebScreen() {
   const handleSearch = () => {
     if (currentUrl.length > 0) {
       const url = isValidUrl(currentUrl) ? (currentUrl.startsWith("http") ? currentUrl : `https://${currentUrl}`) : `https://www.google.com/search?q=${encodeURIComponent(currentUrl)}`;
-      // router.push({ pathname: '/web', params: { url: url }});
+      router.push({ pathname: '/web', params: { url: url }});
       setCurrentUrl("");
     }
   };
@@ -45,14 +44,14 @@ export default function WebScreen() {
       {/* Encabezado */}
       <View style={[styles.encabezado, { backgroundColor: themeStyles.colors.background, borderBottomColor: themeStyles.colors.border }]} >
         {/* Boton home */}
-        <TouchableOpacity onPress={() => router.push('/')}>
+        <TouchableOpacity onPress={ () => router.push('/') }>
           <AntDesign name="home" size={24} color={themeStyles.colors.text} />
         </TouchableOpacity>
 
         {/* Input URL */}
         <TextInput style={[styles.textInput, { backgroundColor: themeStyles.colors.inputBackground, color: themeStyles.colors.text }]}
           value={currentUrl}
-          onChangeText={(text) => setCurrentUrl(text)}
+          onChangeText={setCurrentUrl}
           placeholder="Intruce una url"
           placeholderTextColor="#999"
           keyboardType="url"
@@ -81,7 +80,8 @@ export default function WebScreen() {
       {/* Cuerpo */}
       <WebView
         ref={webViewRef} // Asigna la referencia al WebView 
-        source={{ uri: url.toString() }} />
+        source={{ uri: url ? url.toString() : "" }} // Usa currentUrl como URL
+        />
     </SafeAreaView>
   );
 }

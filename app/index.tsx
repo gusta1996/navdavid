@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, View, TextInput, SafeAreaView, useColorScheme, Platform, StatusBar, Image, StyleSheet, Linking } from "react-native";
+import { Text, TouchableOpacity, View, TextInput, SafeAreaView, useColorScheme, Platform, StatusBar, Image, StyleSheet, Linking, Modal } from "react-native";
 import { Link } from "expo-router";
 // Importa los iconos de Expo  
 import { MaterialIcons, SimpleLineIcons } from "@/src/icons/icons";
@@ -8,24 +8,26 @@ import { DarkTheme, DefaultTheme } from "@react-navigation/native";
 
 // navegacion con expo-router
 import { useRouter } from 'expo-router';
+import { FullWindowOverlay } from "react-native-screens";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();// modo oscuro o claro
-  const themeStyles = colorScheme === 'dark' ? DarkTheme : DefaultTheme; 
+  const themeStyles = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
   const [input, setInput] = useState(""); // estado de url
   const router = useRouter(); // navegacion con expo-router
+  const [modalVisible, setModalVisible] = useState(false);
 
   // Función para verificar si el texto ingresado es una URL
-  const isValidUrl = (text : string) => {
+  const isValidUrl = (text: string) => {
     const pattern = /^(https?:\/\/)?([\da-z.-]+\.[a-z.]{2,6}|[0-9.]+)([\/\w .-]*)*(\?.*)?(#.*)?$/;
     return pattern.test(text);
   };
 
   // Función para manejar la búsqueda o redirección
-  const handleSearch = ( ) => {
+  const handleSearch = () => {
     if (input.length > 0) {
       const url = isValidUrl(input) ? (input.startsWith("http") ? input : `https://${input}`) : `https://www.google.com/search?q=${encodeURIComponent(input)}`;
-      router.push({ pathname: '/web', params: { url: url }});
+      router.push({ pathname: '/web', params: { url: url } });
       setInput("");
     }
   };
@@ -58,7 +60,7 @@ export default function HomeScreen() {
           <TextInput
             style={[styles.textInput, { backgroundColor: themeStyles.colors.inputBackground, color: themeStyles.colors.text }]}
             value={input}
-            onChangeText={(text) => setInput(text)}
+            onChangeText={setInput}
             placeholder="Busqueda web"
             placeholderTextColor={themeStyles.colors.text}
             keyboardType="url"
@@ -80,8 +82,35 @@ export default function HomeScreen() {
         </View>
 
         {/* Cuerpo */}
-        <View style={{ padding: 10 }}>
-          <Text style={{ color: themeStyles.colors.text }}>Pantalla home</Text>
+        <View style={{ padding: 15 }}>
+          <View
+            style={{
+              padding: 15,
+              borderRadius: 10,
+              backgroundColor: themeStyles.colors.card
+            }}>
+            <Text style={{ color: themeStyles.colors.text, fontWeight: 'bold' }}>Enlaces guardados:</Text>
+            <TouchableOpacity style={styles.openButtom} onPress={() => setModalVisible(true)}>
+              <SimpleLineIcons name="plus" size={24} color={themeStyles.colors.text} />
+            </TouchableOpacity>
+
+            {/* Modal: agregar enlaces*/}
+            <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(!modalVisible)}>
+              <View style={styles.centeredView}>
+                <View style={styles.modalView}>
+                  <Text style={styles.modalText}>¡Hola! Soy una caja flotante</Text>
+
+                  {/* Botón para cerrar la caja flotante */}
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setModalVisible(!modalVisible)}
+                  >
+                    <Text style={styles.textStyle}>Cerrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </View>
         </View>
 
       </View>
@@ -126,5 +155,46 @@ const styles = StyleSheet.create({
     right: 20,
     alignItems: "center",
     justifyContent: "center",
-  }
+  },
+  openButtom: {
+    backgroundColor: '#2196F3',
+    padding: 10,
+    borderRadius: 5,
+  },
+  closeButton: {
+    backgroundColor: '#F194FF',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 15,
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 22,
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalText: {
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  textStyle: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
 });
