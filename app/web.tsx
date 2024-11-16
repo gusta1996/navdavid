@@ -1,14 +1,16 @@
-import React, { useRef, useState } from "react";
-import { View, Text, useColorScheme, TouchableOpacity, TextInput, StyleSheet, SafeAreaView, Platform, StatusBar } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, useColorScheme, TouchableOpacity, TextInput, StyleSheet, SafeAreaView, Platform, StatusBar, Modal, TouchableWithoutFeedback } from "react-native";
 import { WebView } from 'react-native-webview';
 // Importa los iconos de Expo  
-import { MaterialIcons, AntDesign, SimpleLineIcons } from "@/src/icons/icons";
+import { MaterialIcons, AntDesign, SimpleLineIcons, Feather, FontAwesome } from "@/src/icons/icons";
 // importa estilos para modo Default y Dark de React
 import { DarkTheme, DefaultTheme } from "@react-navigation/native";
 // obtener el parámetro url
 import { useGlobalSearchParams } from 'expo-router';
 // navegacion con expo-router
 import { useRouter } from 'expo-router';
+// Importamos AsyncStorage
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function WebScreen() {
   const colorScheme = useColorScheme();
@@ -18,6 +20,7 @@ export default function WebScreen() {
   const [currentUrl, setCurrentUrl] = useState(url ? url.toString() : "");
   const webViewRef = useRef<WebView>(null);// Crea una referencia al WebView
   const router = useRouter(); // navegacion con expo-router
+
 
   // Función para verificar si el texto ingresado es una URL
   const isValidUrl = (text: string) => {
@@ -29,7 +32,7 @@ export default function WebScreen() {
   const handleSearch = () => {
     if (currentUrl.length > 0) {
       const url = isValidUrl(currentUrl) ? (currentUrl.startsWith("http") ? currentUrl : `https://${currentUrl}`) : `https://www.google.com/search?q=${encodeURIComponent(currentUrl)}`;
-      router.push({ pathname: '/web', params: { url: url }});
+      router.push({ pathname: '/web', params: { url: url } });
       setCurrentUrl("");
     }
   };
@@ -44,7 +47,7 @@ export default function WebScreen() {
       {/* Encabezado */}
       <View style={[styles.encabezado, { backgroundColor: themeStyles.colors.background, borderBottomColor: themeStyles.colors.border }]} >
         {/* Boton home */}
-        <TouchableOpacity onPress={ () => router.push('/') }>
+        <TouchableOpacity style={styles.iconNavBar} onPress={() => router.push('/')}>
           <AntDesign name="home" size={24} color={themeStyles.colors.text} />
         </TouchableOpacity>
 
@@ -67,32 +70,40 @@ export default function WebScreen() {
         )}
 
         {/* Botón Refrescar */}
-        <TouchableOpacity onPress={() => webViewRef.current?.reload()}>
+        <TouchableOpacity style={styles.iconNavBar} onPress={() => webViewRef.current?.reload()}>
           <MaterialIcons name="refresh" size={24} color={themeStyles.colors.text} />
         </TouchableOpacity>
 
         {/* Botón Opciones */}
-        <TouchableOpacity>
-          <SimpleLineIcons name="options-vertical" size={20} color={themeStyles.colors.text} />
+        <TouchableOpacity style={styles.iconNavBar}>
+          <MaterialIcons name="access-time" size={24} color={themeStyles.colors.text} />
         </TouchableOpacity>
       </View>
+
+
 
       {/* Cuerpo */}
       <WebView
         ref={webViewRef} // Asigna la referencia al WebView 
-        source={{ uri: url ? url.toString() : "" }} // Usa currentUrl como URL
-        />
+        source={{ uri: currentUrl }} // Usa currentUrl como URL
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  iconNavBar: {
+    height: 35,
+    width: 35,
+    justifyContent: "center",
+    alignItems: "center"
+  },
   encabezado: {
     height: 60,
     justifyContent: "space-between",
     alignItems: "center",
     flexDirection: "row",
-    gap: 15,
+    gap: 5,
     borderBottomWidth: 1,
     paddingHorizontal: 10,
   },
@@ -108,8 +119,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: 40,
     height: 40,
-    right: 85,
+    right: 90,
     alignItems: "center",
     justifyContent: "center",
-  }
+  },
 });
