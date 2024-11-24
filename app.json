@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "navDavid",
-    "slug": "navDavid",
+    "slug": "navdavid",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.gusta1996.navdavid"
     },
     "web": {
       "bundler": "metro",
@@ -31,6 +32,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "e0735bf7-db30-4b5b-bc5d-937b11131b3a"
+      }
+    },
+    "owner": "gusta1996"
   }
 }
