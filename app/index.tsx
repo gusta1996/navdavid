@@ -1,39 +1,59 @@
-import React, { useState } from "react";
-import { Text, TouchableOpacity, View, TextInput, SafeAreaView, useColorScheme, Platform, StatusBar, Image, StyleSheet, Linking, Modal } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Text, TouchableOpacity, View, TextInput, SafeAreaView, useColorScheme, Image, StyleSheet, Modal, ScrollView, Button, Vibration } from "react-native";
 
 import { Link } from "expo-router";
 // Importa los iconos de Expo  
-import { AntDesign, Feather, MaterialIcons, SimpleLineIcons } from "@/src/icons/icons";
-// importa estilos para modo Default y Dark de React
-import { DarkTheme, DefaultTheme } from "@react-navigation/native";
-
+import { AntDesign, Feather, MaterialIcons } from "@/src/icons/icons";
+// importa estilos para modo claro y oscuro
+import { darkTheme } from "../src/themes/darkTheme";
+import { lightTheme } from "../src/themes/lightTheme";
 // navegacion con expo-router
 import { useRouter } from 'expo-router';
-import { FullWindowOverlay } from "react-native-screens";
 import { FlatList } from "react-native-gesture-handler";
 import { Fontisto } from "@expo/vector-icons";
+// Importamos AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();// modo oscuro o claro
-  const themeStyles = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const themeStyles = colorScheme === 'dark' ? darkTheme : lightTheme;
   const [input, setInput] = useState(""); // estado de url
   const router = useRouter(); // navegacion con expo-router
   const [modalVisible, setModalVisible] = useState(false);
 
+
+  const [favorites, setFavorites] = useState<{ id: number; name: string; url: string }[]>([]);
   const [nameFavorite, setNameFavorite] = useState("");
   const [urlFavorite, setUrlFavorite] = useState("");
   const [errorFavorite, setErrorFavorite] = useState("")
+  const [favoriteToDelete, setFavoriteToDelete] = useState<number | null>(null); // Estado para el ID del favorito a borrar
+  const [modalFavoriteToDelete, setModalFavoriteToDelete] = useState(false);
 
-  // Función para verificar si el texto ingresado es una URL
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  // renderiza icono de modo oscuro y claro
+
+  // Verificar si el texto ingresado es una URL
   const isValidUrl = (text: string) => {
     const pattern = /^(https?:\/\/)?([\da-z.-]+\.[a-z.]{2,6}|[0-9.]+)([\/\w .-]*)*(\?.*)?(#.*)?$/;
-    return pattern.test(text);
+    if (pattern.test(text)) {
+      if (text.startsWith("http")) {
+        return text;
+      } else {
+        return `https://${text}`;
+      }
+    } else {
+      return `https://www.google.com/search?q=${encodeURIComponent(text)}`;
+    }
   };
 
-  // Función para manejar la búsqueda o redirección
+  // Manejar la búsqueda o redirección
   const handleSearch = () => {
     if (input.length > 0) {
-      const url = isValidUrl(input) ? (input.startsWith("http") ? input : `https://${input}`) : `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+      const url = isValidUrl(input);
       router.push({ pathname: '/web', params: { url: url } });
       setInput("");
     }
@@ -51,51 +71,111 @@ export default function HomeScreen() {
     setErrorFavorite(''); // vacía mensaje de error
   };
 
-  // Guardar favoritos
-  const saveFavorite = () => {
-
+  // Guardar favoritos con ID único
+  const saveFavorite = async () => {
     if (nameFavorite.length > 0 && urlFavorite.length > 0) {
-      // agregar funcion de guardado
+      // limpiar los estados
+      clearFavoriteStates();
+      setModalVisible(false);
+      // Crea un objeto con un ID único, el nombre y la URL
+      const newFavorite = {
+        id: Date.now(), // Usamos el tiempo actual como ID único
+        name: nameFavorite,
+        url: urlFavorite,
+      };
 
-      clearFavoriteStates(); // vacia los estados setNameFavorite, setUrlFavorite, setErrorFavorite
-      setModalVisible(false); // cierra modal
+      try {
+        // Obtiene la lista actual de favoritos
+        const existingFavorites = await AsyncStorage.getItem('favorites');
+        const favorites = existingFavorites ? JSON.parse(existingFavorites) : [];
+
+        // Agrega el nuevo favorito a la lista
+        favorites.push(newFavorite);
+
+        // Guarda la lista actualizada
+        await AsyncStorage.setItem('favorites', JSON.stringify(favorites));
+
+        // carga lista actualizada
+        loadFavorites();
+
+      } catch (error) {
+        console.error('Error al guardar el favorito:', error);
+      }
     } else {
       setErrorFavorite('Llene todos los campos.');
     }
   };
 
-  const data = [
-    { id: '1', url: 'Elemento 1' },
-    { id: '2', url: 'Elemento 2' },
-    { id: '3', url: 'Elemento 3' },
-    { id: '4', url: 'Elemento 4' },
-    { id: '5', url: 'Elemento 5' },
-    { id: '6', url: 'Elemento 6' },
-  ];
+  // Cargar favoritos
+  const loadFavorites = async () => {
+    try {
+      // Obtiene la lista actual de favoritos (en JSON)
+      const existingFavorites = await AsyncStorage.getItem('favorites');
 
-  const renderItem = ({ item }) => (
+      // convierte la cadena JSON en lista
+      if (existingFavorites) {
+        const parsedFavorites = JSON.parse(existingFavorites);
+        setFavorites(parsedFavorites);
+      }
+    } catch (error) {
+      console.error('Error al cargar los favoritos:', error);
+    }
+  };
+
+  // Borrar favorito usando el ID
+  const deleteFavorite = async (idToDelete: number) => {
+    try {
+      // Obtiene la lista actual de favoritos (en JSON)
+      const existingFavorites = await AsyncStorage.getItem('favorites');
+      const favorites = existingFavorites ? JSON.parse(existingFavorites) : [];
+
+      // Filtra la lista para eliminar el favorito con el ID proporcionado
+      const updatedFavorites = favorites.filter((favorite: { id: number; name: string; url: string }) => favorite.id !== idToDelete);
+
+      // Guarda la lista actualizada
+      await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+
+      // Actualiza el estado con la lista de favoritos modificada
+      setFavorites(updatedFavorites);
+
+      // Cierra el modal
+      Vibration.vibrate(100); // vibracion
+      setModalFavoriteToDelete(false);
+    } catch (error) {
+      console.error('Error al borrar el favorito:', error);
+    }
+  };
+
+  const handleLongPress = (id: number) => {
+    setFavoriteToDelete(id); // Guarda el ID del favorito a eliminar
+    setModalFavoriteToDelete(true); // Muestra el modal de confirmación
+    Vibration.vibrate(100); // vibracion
+  };
+
+  // lista de favoritos
+  const renderItem = ({ item }: { item: { id: number; name: string; url: string } }) => (
     <View style={styles.itemFlatList}>
-      <TouchableOpacity onPress={() => router.push('/web')}>
+      <TouchableOpacity
+        onPress={() => {
+          const url = isValidUrl(item.url);
+          router.push({ pathname: '/web', params: { url: url } });
+        }}
+        onLongPress={() => handleLongPress(item.id)}  // Usamos el ID para eliminar el favorito
+      >
         <View style={styles.itemButtomWeb}>
           <Fontisto name="world-o" size={24} color={themeStyles.colors.text} />
-          <Text style={{ fontSize: 12, color: themeStyles.colors.text }} numberOfLines={1} ellipsizeMode="tail">{item.url}</Text>
+          <Text style={{ fontSize: 10, color: themeStyles.colors.text }} numberOfLines={1} ellipsizeMode="tail">
+            {item.name}
+          </Text>
         </View>
       </TouchableOpacity>
     </View>
   );
 
-  return (
-    <SafeAreaView style={{ flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
-      <View>
 
-        {/* Botón Opciones */}
-        <View style={[styles.viewLink]}>
-          <Link href="/web" asChild style={[styles.linkOpciones]}>
-            <TouchableOpacity>
-              <SimpleLineIcons name="options-vertical" size={23} color={themeStyles.colors.text} />
-            </TouchableOpacity>
-          </Link>
-        </View>
+  return (
+    <SafeAreaView style={{ backgroundColor: themeStyles.colors.background, flex: 1 }}>
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
 
         {/* Imagen */}
         <View style={{ alignItems: 'center' }}>
@@ -135,12 +215,43 @@ export default function HomeScreen() {
             <Text style={{ color: themeStyles.colors.text, fontWeight: 'bold' }}>Favoritos:</Text>
 
             {/* Lista de enlaces guardados */}
-            <FlatList data={data} renderItem={renderItem} numColumns={4} contentContainerStyle={styles.containerFlatList} />
+            <FlatList
+              data={favorites}
+              renderItem={renderItem}
+              numColumns={4}
+              contentContainerStyle={styles.containerFlatList}
+              scrollEnabled={false} />
+
+            {/* Modal de Confirmación */}
+            <Modal
+              animationType="slide"
+              transparent={true}
+              visible={modalFavoriteToDelete}
+              onRequestClose={() => setModalFavoriteToDelete(false)}
+            >
+              <View style={styles.centeredView}>
+                <View style={[styles.modalView, { backgroundColor: themeStyles.colors.background, borderColor: themeStyles.colors.border }]}>
+                  <Text style={{ fontSize: 16, color: 'white', marginBottom: 20 }}>¿Estás seguro de que quieres eliminar este favorito?</Text>
+
+                  <View style={styles.buttonsContainer}>
+                    <Button
+                      title="Eliminar"
+                      onPress={() => {
+                        if (favoriteToDelete !== null) {
+                          deleteFavorite(favoriteToDelete); // Llama a la función para borrar el favorito
+                        }
+                      }}
+                    />
+                    <Button title="Cancelar" onPress={() => setModalFavoriteToDelete(false)} />
+                  </View>
+                </View>
+              </View>
+            </Modal>
 
             {/* Botom de modal */}
             <TouchableOpacity style={[styles.openButtom, { backgroundColor: themeStyles.colors.primary }]} onPress={() => setModalVisible(true)}>
-              <Feather name="plus" size={20} color='white' />
-              <Text style={{ fontSize: 16, color: 'white' }}>Agregar enlace</Text>
+              <Feather name="plus" size={20} color='black' />
+              <Text style={{ fontSize: 16, color: 'black' }}>Agregar enlace</Text>
             </TouchableOpacity>
 
             {/* Modal: agregar enlaces*/}
@@ -151,26 +262,26 @@ export default function HomeScreen() {
                   {/* Titulo modal */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={[styles.titleModal, { color: themeStyles.colors.text }]}>GUARDAR FAVORITO</Text>
-                    <AntDesign name="close" size={24} color={themeStyles.colors.text} onPress={() =>{ setModalVisible(false); clearFavoriteStates(); }} />
+                    <AntDesign name="close" size={24} color={themeStyles.colors.text} onPress={() => { setModalVisible(false); clearFavoriteStates(); }} />
                   </View>
 
                   {/* Nombre web */}
-                  <Text style={[styles.modalText, { color: themeStyles.colors.text }]}>Nombre de la web:</Text>
-                  <TextInput style={[styles.modalInput, { backgroundColor: themeStyles.colors.inputBackground }]}
+                  <Text style={[styles.modalText, { color: themeStyles.colors.text }]}>Nombre:</Text>
+                  <TextInput style={[styles.modalInput, { backgroundColor: themeStyles.colors.inputBackground, color: themeStyles.colors.text }]}
                     value={nameFavorite}
                     onChangeText={setNameFavorite}
-                    placeholder="Introduce nombre de la pagina"
+                    placeholder="Introduce nombre"
                     placeholderTextColor={themeStyles.colors.text}
                     keyboardType="url"
                     autoCapitalize="none"
                     autoCorrect={false} />
 
                   {/* Url web */}
-                  <Text style={[styles.modalText, { color: themeStyles.colors.text }]}>Url:</Text>
-                  <TextInput style={[styles.modalInput, { backgroundColor: themeStyles.colors.inputBackground }]}
+                  <Text style={[styles.modalText, { color: themeStyles.colors.text }]}>Url / Busqueda:</Text>
+                  <TextInput style={[styles.modalInput, { backgroundColor: themeStyles.colors.inputBackground, color: themeStyles.colors.text }]}
                     value={urlFavorite}
                     onChangeText={setUrlFavorite}
-                    placeholder="Introduce la url"
+                    placeholder="Introduce la Url o Busqueda"
                     placeholderTextColor={themeStyles.colors.text}
                     keyboardType="url"
                     autoCapitalize="none"
@@ -179,7 +290,7 @@ export default function HomeScreen() {
                   {errorFavorite ? <Text style={{ color: 'red', fontWeight: 'bold' }}>{errorFavorite}</Text> : null}
 
                   {/* Botón para cerrar la caja flotante */}
-                  <TouchableOpacity style={styles.closeButton} onPress={saveFavorite} >
+                  <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeStyles.colors.primary }]} onPress={saveFavorite} >
                     <Text style={styles.textStyle}>Guardar</Text>
                   </TouchableOpacity>
                 </View>
@@ -188,22 +299,12 @@ export default function HomeScreen() {
           </View>
         </View>
 
-      </View>
+      </ScrollView >
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  viewLink: {
-    alignItems: 'flex-end',
-    paddingRight: 10
-  },
-  linkOpciones: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center"
-  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -287,11 +388,18 @@ const styles = StyleSheet.create({
   },
   itemFlatList: {
     width: '25%',
-    paddingVertical: 15,
-    paddingHorizontal: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 3,
   },
   itemButtomWeb: {
     alignItems: 'center',
-    gap: 5
-  }
+    gap: 5,
+    height: 60,
+    justifyContent: 'center',
+  },
+  buttonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    width: "100%",
+  },
 });

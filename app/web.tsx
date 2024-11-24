@@ -3,24 +3,25 @@ import { View, Text, useColorScheme, TouchableOpacity, TextInput, StyleSheet, Sa
 import { WebView } from 'react-native-webview';
 // Importa los iconos de Expo  
 import { MaterialIcons, AntDesign, SimpleLineIcons, Feather, FontAwesome } from "@/src/icons/icons";
-// importa estilos para modo Default y Dark de React
-import { DarkTheme, DefaultTheme } from "@react-navigation/native";
+// importa estilos para modo claro y oscuro
+import { darkTheme } from "../src/themes/darkTheme";
+import { lightTheme } from "../src/themes/lightTheme";
 // obtener el parámetro url
 import { useGlobalSearchParams } from 'expo-router';
 // navegacion con expo-router
 import { useRouter } from 'expo-router';
-// Importamos AsyncStorage
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 export default function WebScreen() {
   const colorScheme = useColorScheme();
-  const themeStyles = colorScheme === 'dark' ? DarkTheme : DefaultTheme
+  const themeStyles = colorScheme === 'dark' ? darkTheme : lightTheme;
   const params = useGlobalSearchParams(); // Devuelve un objeto con los parámetros
   const { url } = params; // Accede al valor de 'url' del objeto
   const [currentUrl, setCurrentUrl] = useState(url ? url.toString() : "");
   const webViewRef = useRef<WebView>(null);// Crea una referencia al WebView
   const router = useRouter(); // navegacion con expo-router
-
+  const [modalAutoRefresh, setModalAutoRefresh] = useState(false);
+  const [segAutoRefresh, setSegAutoRefresh] = useState("");
 
   // Función para verificar si el texto ingresado es una URL
   const isValidUrl = (text: string) => {
@@ -42,8 +43,49 @@ export default function WebScreen() {
     setCurrentUrl("");
   };
 
+  // Función para ejecutar el script en la webview 
+  const executeScript = ` 
+  const enProgreso = document.querySelector("a[href='/peer-transfers/in-progress']");
+  const disponible = document.querySelector("a[href='/peer-transfers/available']");
+  const titulo = document.querySelector(".section__header h1");
+
+  function clickEnProgeso() { enProgreso.click(); } 
+  function clickDisponible() { disponible.click(); } 
+
+  function recargador() {
+    if (window.location.href == 'https://app.airtm.com/peer-transfers/available') {
+      let seconds = ${segAutoRefresh};
+      clickEnProgeso(); 
+      clickDisponible(); 
+      titulo.style.backgroundColor = "green"; 
+      function actContador() { 
+        if (seconds > 0) { 
+          titulo.innerHTML = "Mi contador: " + seconds;
+          if (seconds <= 6) { 
+            titulo.style.backgroundColor = "white";
+          } 
+          seconds--; 
+          setTimeout(actContador, 1000); // Llama a la función nuevamente después de 1 segundo 
+        } else { 
+          // Recarga 
+          recargador();
+        } 
+      } 
+      actContador(); 
+    } 
+  } 
+  recargador(); `;
+
+  // funcion autoRefresh
+  const autoRefresh = () => {
+    if (segAutoRefresh.length > 0) {
+      setModalAutoRefresh(false);
+      webViewRef.current?.injectJavaScript(executeScript);
+    }
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 }}>
+    <SafeAreaView style={{ flex: 1 }}>
       {/* Encabezado */}
       <View style={[styles.encabezado, { backgroundColor: themeStyles.colors.background, borderBottomColor: themeStyles.colors.border }]} >
         {/* Boton home */}
@@ -74,13 +116,41 @@ export default function WebScreen() {
           <MaterialIcons name="refresh" size={24} color={themeStyles.colors.text} />
         </TouchableOpacity>
 
-        {/* Botón Opciones */}
-        <TouchableOpacity style={styles.iconNavBar}>
+        {/* Botón funcion autoRefresh */}
+        <TouchableOpacity style={styles.iconNavBar} onPress={() => setModalAutoRefresh(true)}>
           <MaterialIcons name="access-time" size={24} color={themeStyles.colors.text} />
         </TouchableOpacity>
+
+        {/* Modal de autoRefresh */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={modalAutoRefresh}
+          onRequestClose={() => setModalAutoRefresh(!modalAutoRefresh)}
+        >
+          <View style={styles.centeredView}>
+            <View style={[styles.modalView, { backgroundColor: themeStyles.colors.background, borderColor: themeStyles.colors.border }]}>
+
+              {/* Cantidad de segundos */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
+                <Text style={{ color: themeStyles.colors.text }}>Recargar despues X segundos:</Text>
+                <AntDesign name="close" size={24} color={themeStyles.colors.text} onPress={() => { setModalAutoRefresh(false); }} />
+              </View>
+              <TextInput style={{ backgroundColor: themeStyles.colors.inputBackground, color: themeStyles.colors.text }}
+                value={segAutoRefresh}
+                onChangeText={setSegAutoRefresh}
+                placeholder="Introduce segundos"
+                placeholderTextColor={themeStyles.colors.text}
+                keyboardType="numeric" />
+
+              {/* Botón para cerrar la caja flotante */}
+              <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeStyles.colors.primary }]} onPress={autoRefresh} >
+                <Text style={styles.textStyle}>Empezar a recargar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
-
-
 
       {/* Cuerpo */}
       <WebView
@@ -122,5 +192,34 @@ const styles = StyleSheet.create({
     right: 90,
     alignItems: "center",
     justifyContent: "center",
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    marginTop: 22,
+  },
+  modalView: {
+    borderWidth: 1,
+    margin: 25,
+    borderRadius: 20,
+    padding: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  closeButton: {
+    backgroundColor: '#F194FF',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 15,
+  },
+  textStyle: {
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

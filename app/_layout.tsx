@@ -1,25 +1,26 @@
 import React from "react";
-import { useColorScheme } from "react-native";
+import { StatusBar, useColorScheme } from "react-native";
 // importa estilos para modo Default y Dark de React
-import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import { ThemeProvider } from "@react-navigation/native";
+// importa estilos para modo claro y oscuro
+import { darkTheme } from "../src/themes/darkTheme";
+import { lightTheme } from "../src/themes/lightTheme";
 
-import { createStackNavigator } from '@react-navigation/stack';
-import IndexScreen from "./index"; // Asegúrate de que esté bien importado
-import web from "./web";     // Asegúrate de que esté bien importado
-
-const Stack = createStackNavigator();
+import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const themeStyles = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const themeStyles = colorScheme === 'dark' ? darkTheme : lightTheme;
 
   return (
-    <ThemeProvider value={themeStyles}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" component={IndexScreen}  />
-        <Stack.Screen name="web" component={web} />
-      </Stack.Navigator>
-    </ThemeProvider>
-    
+    <GestureHandlerRootView style={{ flex: 1 }} >
+      <ThemeProvider value={themeStyles}>
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" options={{ title: 'Index' }} />
+          <Stack.Screen name="web" options={{ title: 'Web' }} />
+        </Stack>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
