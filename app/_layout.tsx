@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StatusBar, useColorScheme } from "react-native";
 // importa estilos para modo Default y Dark de React
 import { ThemeProvider } from "@react-navigation/native";
@@ -12,6 +12,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const themeStyles = colorScheme === 'dark' ? darkTheme : lightTheme;
+
+  useEffect(() => { 
+    StatusBar.setBarStyle(colorScheme === 'dark' ? 'light-content' : 'dark-content'); 
+    StatusBar.setBackgroundColor(themeStyles.colors.background);
+  }, [colorScheme]);
+  
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} >
