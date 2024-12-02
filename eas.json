@@ -1,19 +1,19 @@
 {
     "build": {
-      "preview": {
+      "navdavid": {
         "android": {
           "buildType": "apk"
         }
       },
-      "preview2": {
+      "navdavid2": {
         "android": {
           "gradleCommand": ":app:assembleRelease"
         }
       },
-      "preview3": {
+      "navdavid3": {
         "developmentClient": true
       },
-      "preview4": {
+      "navdavid4": {
         "distribution": "internal"
       },
       "production": {}
